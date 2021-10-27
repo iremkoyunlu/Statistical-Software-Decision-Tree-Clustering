@@ -1,0 +1,416 @@
+
+
+```{r fotograf, echo=FALSE, message=FALSE, warning=FALSE}
+knitr::include_graphics("featured.png")
+```
+
+<style>
+/* Your other css */
+    body {
+      background-image: url(https://wallpaperaccess.com/full/981549.jpg);
+      background-position: center center;
+      background-attachment: fixed;
+      background-repeat: no-repeat;
+      background-size: 100% 100%;
+    }
+.section .reveal .state-background {
+    background-image: url(https://wallpaperaccess.com/full/981549.jpg);
+    background-position: center center;
+    background-attachment: fixed;
+    background-repeat: no-repeat;
+    background-size: 100% 100%;
+}
+</style>
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(
+	echo = TRUE,
+	message = FALSE,
+	warning = FALSE)
+```
+
+# SINIFLANDIRMA HATASI DUZELTME
+<style>
+
+div.blue pre.r { background-color:lightblue; }
+</style>
+
+<div class = "blue">
+
+```{r,warning=F, message=F}
+library(tidymodels)
+library(tidyverse)
+library(workflows)
+library(tune)
+library(ranger)
+```
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+
+library(AmesHousing)
+data <- ames_raw
+colnames(data) <- c("Order", "PID","MSSubClass","MSZoning","LotFrontage","LotArea","Street","Alley","LotShape","LandContour","Utilities","LotConfig","LandSlope","Neighborhood","Condition1","Condition2","BldgType","HouseStyle","OverallQual","OverallCond","YearBuilt","YearRemodAdd","RoofStyle","RoofMatl","Exterior1","Exterior2","MasVnrType","MasVnrArea","ExterQual","ExterCond","Foundation","BsmtQual","BsmtCond","BsmtExposure","BsmtFinType1","BsmtFinSF1","BsmtFinType2","BsmtFinSF2","BsmtUnfSF","TotalBsmtSF","Heating","HeatingQC","CentralAir","Electrical","OnestFlrSF","TwondFlrSF","LowQualFinSF","GrLivArea","BsmtFullBath","BsmtHalfBath","FullBath","HalfBath","Bedroom","Kitchen","KitchenQual","TotRmsAbvGrd","Functional","Fireplaces","FireplaceQu","GarageType","GarageYrBlt","GarageFinish","GarageCars","GarageArea","GarageQual","GarageCond","PavedDrive","WoodDeckSF","OpenPorchSF","EnclosedPorch","ThreeSsnPorch","ScreenPorch","PoolArea","PoolQC","Fence","MiscFeature","MiscVal","MoSold","YrSold","SaleType","SaleCondition","SalePrice")
+```
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+data$Order <- factor(data$Order)
+
+```
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+data <- data %>% mutate( SalePricecat=ifelse(data$SalePrice>230000, "1","0" ))
+data$SalePricecat <- factor(data$SalePricecat) 
+```
+
+## Pre-Process(on isleme)
+
+## Data Sampling (verileri ayirma)
+
+Yukaridaki gibi verimizi test ve train olarak ayiralim.
+
+```{r message=FALSE, warning=FALSE}
+set.seed(3014)
+data_split <- initial_split(data, prop = 0.498293515)
+data_split
+```
+
+```{r message=FALSE, warning=FALSE}
+set.seed(3014)
+head(data_split %>%
+  training() %>%
+  glimpse())
+```
+
+```{r message=FALSE, warning=FALSE}
+set.seed(3014)
+head(data_split %>%
+  testing() %>%
+  glimpse())
+```
+
+```{r message=FALSE, warning=FALSE}
+set.seed(3014)
+data_recipe <- training(data_split) %>%
+  recipe(SalePricecat ~ OverallQual+
+             LotArea+
+             YearRemodAdd+
+             OnestFlrSF+
+             GrLivArea) %>%
+  step_corr(all_predictors()) %>%
+  step_center(all_predictors(), -all_outcomes()) %>% # ortalamayi 0 yapiyoruz
+  step_scale(all_predictors(), -all_outcomes()) %>% # standart sapamayi 1 yapiyoruz
+  prep()
+data_recipe
+```
+
+# On islemenin uygulanmasi
+<div class = "blue">
+```{r message=FALSE, warning=FALSE}
+set.seed(3014)
+data_testing <- data_recipe %>%
+  bake(testing(data_split)) 
+glimpse(data_testing)
+```
+
+```{r message=FALSE, warning=FALSE}
+set.seed(3014)
+data_training <- juice(data_recipe)
+glimpse(data_training)
+```
+
+# MODEL TRAINING
+
+Modelleme bitiminden sonra model validation a bakilacaktir ;
+
+Metric: model iyiligi olcme kriteridir. 
+Accuracy: Dogru siniflandirma orani	
+Yanlislari tahmin etme sayisi(yanlis siniflandirma orani): 1-accuracy
+Kappa istatistigi: uyumu olcer, tutarliliga bakar (gercekte 0 iken 0 a atananlar ya da 1 iken 1'e atananlarin tutarliligina bakar).
+Accuracy ve kappa nin yüksek olmasi modelimiz icin daha iyidir.
+OBB ve Gini dusuk olmasi model icin daha iyidir.
+
+# RANGER
+<div class = "blue">
+```{r message=FALSE, warning=FALSE}
+set.seed(3014)
+library(ranger)
+library(tidymodels)
+data_ranger <- rand_forest(trees = 100, mode = "classification") %>%
+  set_engine("ranger") %>%
+  fit(SalePricecat ~ OverallQual+
+             LotArea+
+             YearRemodAdd+
+             OnestFlrSF+
+             GrLivArea, data = data_training)
+data_ranger 
+```
+OBB degeri ne kadar dusukse o kadar iyidir ,diger kurulan modellerle OBB,Kappa,Gini gibi parametrelerle karsilastirma yapilacaktir.Ranger modelimiz icin OOB 0.04667335  cikmistir.Mtry:2 dir.OOB degerimiz 0.04667335 cikmistir yani %4.6
+Ranger icin Sınıf tahmini yapalim.
+
+```{r message=FALSE, warning=FALSE}
+set.seed(3014)
+predict(data_ranger, data_testing)
+```
+
+```{r message=FALSE, warning=FALSE}
+set.seed(3014)
+data_ranger %>%
+  predict(data_testing) %>%
+  bind_cols(data_testing) %>%
+  glimpse()
+```
+
+```{r message=FALSE, warning=FALSE}
+set.seed(3014)
+data_ranger %>%
+  predict(data_testing) %>%
+  bind_cols(data_testing) %>%
+  metrics(truth = SalePricecat, estimate = .pred_class)
+```
+Ranger icin Kappa degerimiz: 0.7888171,Accuracy degerimiz :0.9346939	
+
+# RANDOM FOREST
+<div class = "blue">
+```{r message=FALSE, warning=FALSE}
+set.seed(3014)
+library(randomForest)
+data_rf <-  rand_forest(trees = 100, mode = "classification") %>%
+  set_engine("randomForest") %>%
+  fit(SalePricecat ~ OverallQual+
+             LotArea+
+             YearRemodAdd+
+             OnestFlrSF+
+             GrLivArea, data = data_training)
+data_rf
+```
+Random forest icin OOB degerimiz 6.4% cikmistir.
+
+Confusion matrix e baktigimizda;
+Evin fiyati dusukken tahminde de dusuk cikma degeri (True Negatif) 1131 dir.
+Evin fiyati dusukken tahminde yuksek cikmasi (False pozitif) 60 ,
+Evin fiyati yuksekken tahminde dusuk cikmasi (False negatif) 34,
+Evin fiyati yuksekken tahminde yuksek cikmasi (True Pozitif ) 235 dir.
+<div class = "blue">
+```{r}
+set.seed(3014)
+data_rf %>%
+  predict(data_testing) %>%
+  bind_cols(data_testing) %>%
+  metrics(truth = SalePricecat, estimate = .pred_class)
+```
+
+Random Forest icin Kappa degerimiz: 0.7882455	, Accuracy degerimiz :0.9346939	cikmistir.
+
+# BAGGING
+<div class = "blue">
+```{r message=FALSE, warning=FALSE}
+set.seed(3014)
+library(randomForest)
+data_bagging<-  rand_forest(mtry  = 5, mode = "classification") %>%
+  set_engine("randomForest") %>%
+  fit(SalePricecat ~ OverallQual+
+             LotArea+
+             YearRemodAdd+
+             OnestFlrSF+
+             GrLivArea, data = data_training)
+data_bagging
+```
+Bagging icin OOB degerimiz 6.64% cikmistir.
+
+Confusion matrix e baktigimizda;
+Evin fiyati dusukken tahminde de dusuk cikma degeri (True Negatif) 1122 dir.
+Evin fiyati dusukken tahminde yuksek cikmasi (False pozitif) 54 ,
+Evin fiyati yuksekken tahminde dusuk cikmasi (False negatif) 43,
+Evin fiyati yuksekken tahminde yuksek cikmasi (True Pozitif ) 241 dir.
+
+```{r message=FALSE, warning=FALSE}
+set.seed(3014)
+predict(data_bagging, data_testing)
+```
+
+```{r message=FALSE, warning=FALSE}
+set.seed(3014)
+data_bagging %>%
+  predict(data_testing) %>%
+  bind_cols(data_testing) %>%
+  glimpse()
+```
+
+```{r message=FALSE, warning=FALSE}
+set.seed(3014)
+data_bagging %>%
+  predict(data_testing) %>%
+  bind_cols(data_testing) %>%
+  metrics(truth = SalePricecat, estimate = .pred_class)
+```
+
+Bagging icin Kappa degerimiz: 0.7761379	,Accuracy degerimiz :0.9299320	cikmistir.
+
+# BOOSTING
+
+```{r message=FALSE, warning=FALSE}
+library(caret)
+set.seed(3014)
+model_gbm <- caret::train(SalePricecat ~ OverallQual+
+             LotArea+
+             YearRemodAdd+
+             OnestFlrSF+
+             GrLivArea, data = data_training,
+                          method = "gbm",
+                          preProcess = c("scale", "center"),
+                          trControl = trainControl(method = "repeatedcv", 
+                                                  number = 5, 
+                                                  repeats = 3, 
+                                                  verboseIter = FALSE),
+                          verbose = 0)
+model_gbm
+```
+
+```{r message=FALSE, warning=FALSE}
+caret::confusionMatrix(
+  data = predict(model_gbm, data_testing),
+  reference = data_testing$SalePricecat )
+```
+
+Confusion matrix e baktigimizda;
+Evin fiyati dusukken tahminde de dusuk cikma degeri (True Negatif) 1144 dir.
+Evin fiyati dusukken tahminde yuksek cikmasi (False pozitif) 42 ,
+Evin fiyati yuksekken tahminde dusuk cikmasi (False negatif) 60,
+Evin fiyati yuksekken tahminde yuksek cikmasi (True Pozitif ) 224 dir.
+
+Boosting icin Kappa degerimiz:0.7719,Accuracy degerimiz :0.9306 	cikmistir.
+Sensitivity : 0.9646 cikmistir.Specificity : 0.7887 7 cikmistir.
+
+# Model Validation
+
+Metric: model iyiligi olcme kriteridir. 
+
+Accuracy: Dogru siniflandirma orani	
+Yanlislari tahmin etme sayisi(yanlis siniflandirma orani): 1-accuracy
+Kappa istatistigi: uyumu olcer, tutarliliga bakar (gercekte 0 iken 0 a atananlar ya da 1 iken 1'e atananlarin tutarliligina bakar).
+Accuracy ve kappa nin yüksek olmasi modelimiz icin daha iyidir.
+
+Kappa karsilastirmasi;
+Ranger icin Kappa degerimiz: 0.7888171
+Boosting icin Kappa degerimiz:0.7719
+Bagging icin Kappa degerimiz: 0.7761379	
+Random Forest icin Kappa degerimiz: 0.7882455	
+
+En yuksek kappa degeri Random Forestta hesaplanmistir bu bizim icin en ideal modeldir.
+
+# XG BOOST
+
+```{r message=FALSE, warning=FALSE}
+set.seed(3014)
+library(xgboost)
+xgboost_model<- xgboost(data = as.matrix(data_training[, -6]), 
+                         label = as.numeric(data_training$SalePricecat)-1,
+                         max_depth = 3, 
+                         objective = "binary:logistic", 
+                         nrounds = 20, 
+                         verbose = FALSE,
+                         prediction = TRUE)
+xgboost_model
+```
+
+Burada train icin tahmin olasiliklari elde edecegiz, bunlari gercek sinifla karsilastirmak icin etiketlere donusturmeliyiz;
+
+```{r message=FALSE, warning=FALSE}
+set.seed(3014)
+predict(xgboost_model, 
+        as.matrix(data_training[, -6])) %>%
+  as.tibble() %>%
+  mutate(prediction = round(value),
+         label = as.numeric(data_training$SalePricecat)-1) %>%
+  count(prediction, label)
+```
+
+```{r message=FALSE, warning=FALSE}
+set.seed(3014)
+dtrain <- xgb.DMatrix(as.matrix(data_training[, -6]), 
+                      label = as.numeric(data_training$SalePricecat)-1)
+dtest <- xgb.DMatrix(as.matrix(data_testing[, -6]), 
+                      label = as.numeric(data_testing$SalePricecat)-1)
+
+params <- list(max_depth = 3, 
+               objective = "binary:logistic",
+               silent = 0)
+
+watchlist <- list(train = dtrain, eval = dtest)
+
+bst_model <- xgb.train(params = params, 
+                       data = dtrain, 
+                       nrounds = 10, 
+                       watchlist = watchlist,
+                       verbose = FALSE,
+                       prediction = TRUE)
+bst_model
+```
+
+Burada test icin tahmin olasiliklari elde edecegiz, bunlari gercek sinifla karsilastirmak icin etiketlere donusturmeliyiz;
+
+```{r message=FALSE, warning=FALSE}
+set.seed(3014)
+predict(bst_model, 
+        as.matrix(data_testing[, -6])) %>%
+  as.tibble() %>%
+  mutate(prediction = round(value),
+         label =  as.numeric(data_testing$SalePricecat)-1) %>%
+  count(prediction, label)
+```
+
+```{r message=FALSE, warning=FALSE}
+set.seed(3014)
+cv_model<- xgb.cv(params = params,
+                   data = dtrain, 
+                   nrounds = 100, 
+                   watchlist = watchlist,
+                   nfold = 5,
+                   verbose = FALSE,
+                   prediction = TRUE)
+
+```
+
+```{r message=FALSE, warning=FALSE}
+set.seed(3014)
+cv_model$evaluation_log %>%
+  filter(test_error_mean == min(test_error_mean))
+```
+
+Burada, kac turdan sonra en kucuk test hatasina ulastigimizi gorebiliriz.Bizim modelimiz icin 21. iterasyonda en kucuk test hatasina ulastigimiz gozukmektedir.
+
+# K-NN ( K-Nearest Neighbor)
+
+Veriyi normallestirelim;
+
+```{r message=FALSE, warning=FALSE}
+library(recipes)
+normalize_rec <-
+  recipe(SalePricecat ~ OverallQual+
+             LotArea+
+             YearRemodAdd+
+             OnestFlrSF+
+             GrLivArea, data = data_training) %>% 
+    step_novel(all_nominal()) %>% 
+    step_dummy(all_nominal()) %>% 
+    step_zv(all_predictors()) %>% 
+    step_center(all_predictors()) %>% 
+    step_scale(all_predictors())
+```
+
+Knn icin olusturulan k degerlerine bakalim en yuksek Kappa degeri secilecektir.
+
+```{r message=FALSE, warning=FALSE}
+set.seed(3014)
+
+control <- trainControl(method = "repeatedcv", repeats = 3)
+
+model_knn <- train(SalePricecat ~ OverallQual+
+             LotArea+
+             YearRemodAdd+
+             OnestFlrSF+
+             GrLivArea, data_training, trControl = control, method = "knn", tuneLength = 25)
+model_knn
+```
+
+Modelimizde k icin en yuksek Kappa degerini ariyoruz, kurdugumuz modelde en yuksek kappa degerimiz k=37 de saglanmistir k=37 icin maksimum dogrulugu elde ederiz.k=37 icin cikan Kappa degeri :0.8191384 ve Accuracy degeri:0.9431290 cikmistir.
+

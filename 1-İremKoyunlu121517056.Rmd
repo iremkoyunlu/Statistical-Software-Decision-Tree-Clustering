@@ -1,0 +1,1249 @@
+---
+title: "Istatistiksel Yazilimlar Vize"
+author: "Irem Koyunlu(121517056)Busra Caliskan(121517063)"
+date: "26 05 2020"
+output: html_document
+---
+<style>
+/* Your other css */
+    body {
+      background-image: url(https://wallpaperaccess.com/full/981549.jpg);
+      background-position: center center;
+      background-attachment: fixed;
+      background-repeat: no-repeat;
+      background-size: 100% 100%;
+    }
+.section .reveal .state-background {
+    background-image: url(https://wallpaperaccess.com/full/981549.jpg);
+    background-position: center center;
+    background-attachment: fixed;
+    background-repeat: no-repeat;
+    background-size: 100% 100%;
+}
+</style>
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(
+	echo = TRUE,
+	message = FALSE,
+	warning = FALSE
+)
+```
+<style>
+
+div.blue pre.r { background-color:lightblue; }
+</style>
+
+<div class = "blue">
+
+
+```{r fotograf, echo=FALSE, message=FALSE, warning=FALSE}
+knitr::include_graphics("0_HvdHQZdYFoEsW4FM.jpg")
+```
+
+
+```{r echo=TRUE, warning=FALSE, paketler, message=F}
+library(summarytools) #tanimlayici istatistikler icin veri ozetleme
+library(dplyr)
+library(ggplot2)
+library(MASS)
+library(broom)
+library(lubridate)
+library(gridExtra)
+library(GGally)
+library(tidymodels)
+library(caret)  #tum modeli karsilastirmak ve olusturmak icin kullanilir.
+library(AmesHousing) #veri seti
+library(ISLR)  #kitabin kutuphanesi
+library(LogisticDx) #lojistik regresyon modelinin varsayimlari icin
+library(pscl) #lojistik regresyon modeli icin uyum iyiligi istatistikleri
+library(rpart)   #karar agaclari icin
+library(summarytools) #tanimlayici istatistikleri cikarir.
+library(e1071)  #confession matrisini elde etmek icin kullanilir. 
+library(tree) #karar agaclari icin
+library(mdsr)  #Modern Data Science with R kitabi icin
+library(rpart.plot)
+library(C50)    #Baska agac tahmin etmek icin kullanilan paket
+library(rattle)  #daha guzel karar agaci cizimi icin gerekli olan paket
+library(party)
+library(partykit)
+#library(RWeka)
+library(randomForest)
+library(ROCR)
+library(Metrics)
+library(recipes)
+library(modeldata)
+library(themis) #undersampling ve oversampling icin kullanilan paket
+library(ggplot2)
+library(summarytools) #tanimlayici istatistikler icin
+library(LogisticDx) #lojistik regresyon modelinin varsaimlari icin
+library(pscl)
+```
+
+# Veri seti
+
+2006-2010 yillari arasinda satilan Ames, Iowa'daki 1.460 evin cok cesitli ozelliklerini tanimlayan 81 ozellige sahiptir.
+
+Modellerin 2010'dan once satilan evlerde egitilmesi ve 2010'da satilan evlerde degerlendirilmesi gerekmektedir.
+
+```{r message=FALSE, warning=FALSE}
+######library(faraway)
+####knitr::include_graphics("resim.jpg")
+```
+
+Kaynak: 
+https://www.kaggle.com/c/house-prices-advanced-regression-techniques/overview
+
+* SalePrice : Mulkun satis fiyati dolar. Bu, tahmin etmeye calistiginiz hedef degiskendir.
+* MSSubClass: Yapi sinifi
+* MSZoning: Genel imar siralamasi
+* LotFrontage: Mulke bagli sokak uzunlugu
+* LotArea: Metrekare cinsten lot buyuklugu
+* Street: Yol erisim turu
+* Alley:  Alley erisim turu
+* LotShape: Mulkun Genel sekli
+* LandContour: Mulkun duzlugu
+* Utilities: Uygun program turu
+* LotConfig: Lot yapilandirma
+* LandSlope: Mulkiyet egimi
+* Neighborhood : Ames sehir sinirlari icinde fiziksel lokasyonlari
+* Condition1: Ana yola veya demiryoluna yakinlik
+* Condition2: Ana yola veya demiryoluna yakinlik (eger bir saniye varsa)
+* BldgType: Konut turu
+* HouseStyle: Konut tarzi
+* OverallQual: Genel malzeme ve bitis kalitesi
+* OverallCond: Genel durum degerlendirmesi
+* YearBuilt: orijinal insaat tarihi(binanin yasi)
+* YearRemodAdd: tadilat tarihi
+* RoofStyle: Cati tipi
+* RoofMatl: Cati malzemesi
+* Exterior1st: Evde dis kaplama
+* Exterior2nd: Evde dis kaplama (birden fazla malzeme varsa)
+* MasVnrType: Duvar kaplama tipi
+* MasVnrArea: Metre kare duvar kaplama alani
+* ExterQual: Dis malzeme kalitesi
+* ExterCond: Dis malzemenin mevcut durumu
+* Foundation : Vakif turu
+* Bsmtqual: Bodrum yuksekligi
+* Bsmtcond: Bodrumun genel durumu
+* Bsmtexposure: Cikis veya bahce seviyesi Bodrum duvarlari
+* Bsmtfıntype1: Bodrum bitmis alanin kalitesi
+* Bsmtfınsf1: Tip 1 bitmis metre kare
+* Bsmtfıntype2: ikinci bitmis alanin kalitesi (varsa)
+* Bsmtfınsf2: Tip 2 bitmis metre kare
+* Bsmtunfsf: Bodrum alaninin bitmemis feet Kare
+* TotalBsmtSF: Bodrum alaninin toplam metre kare
+* Heating: Isitma tipi
+* HeatingQC: Isıtma kalitesi ve durumu
+* Centrallair: Merkezi Klima
+* Electrical: Elektrik sistemi
+* onestflrsf: Birinci kat metre kare
+* twondFlrSF: Ikinci kat metre kare
+* LowQualFinSF: Dusuk kaliteli bitmis metre kare (tüm zeminler)
+* GrLivArea: Yukaridaki sinif (zemin) oturma alani metre kare
+* Bsmtfullbath: Bodrum tam banyolar
+* Bsmthalfbath: Bodrum yarim banyo
+* FullBath: Kalite ustu tam banyolar
+* HalfBath: Kalite uzerinde yarim banyolar
+* Bedroom: Bodrum katinin uzerindeki yatak odasi sayisi
+* Kitchen : Mutfak sayisi
+* KitchenQual: Mutfak kalitesi
+* TotRmsAbvGrd: Kalite uzerinde toplam oda (banyo icermez)
+* Functional: Ev islevselligi degerlendirmesi
+* Fireplaces : Somine sayisi
+* FireplaceQu: Somine kalitesi
+* GarageType: Garaj tipi
+* GarageYrBlt: Garajin  insa edildigi yil
+* GarageFinish: Garajin ic kaplamasi
+* GarageCars:  Garajin araba kapasitesi
+* GarageArea: Garajin metre kare cinsinden boyutu
+* GarageQual: Garaj kalitesi
+* GarageCond: Garaj durumu
+* PavedDrive: Evin onundeki ozel araba yolu 
+* WoodDeckSF: Metre kare ahsap guverte alani
+* OpenPorchSF: Metre kare acik sundurma alani
+* EnclosedPorch: Metre kare kapali sundurma alani
+* 3SsnPorch: Uc sezon sundurma alani metre kare
+* ScreenPorch: Metrekare ekran sundurma alani
+* PoolArea: Metre kare havuz alani
+* PoolQC: Havuz kalitesi
+* Fence: Cit kalitesi
+* MiscFeature: Diger kategorilerde yer almayan cesitli ozellik
+* MiscVal :Cesitli ozellik $ degeri
+* MoSold: Aylik satilan ev
+* YrSold: Yillik satilan ev
+* SaleType: Satis türü
+* SaleCondition: Satis durumu
+
+Daha fazla bilgi için: http://jse.amstat.org/v19n3/decock.pdf
+
+https://www.kaggle.com/leeclemmer/exploratory-data-analysis-of-housing-in-ames-iowa
+
+```{r message=FALSE, warning=FALSE}
+library(AmesHousing)
+#ames_raw
+```
+
+Oncelikle verimizin degisken isimlerini degistiriyoruz.
+Verimizi daha kolay kullanabilmek icin adini degistirdik.
+
+```{r message=FALSE, warning=FALSE}
+data <- ames_raw
+colnames(data) <- c("Order", "PID","MSSubClass","MSZoning","LotFrontage","LotArea","Street","Alley","LotShape","LandContour","Utilities","LotConfig","LandSlope","Neighborhood","Condition1","Condition2","BldgType","HouseStyle","OverallQual","OverallCond","YearBuilt","YearRemodAdd","RoofStyle","RoofMatl","Exterior1","Exterior2","MasVnrType","MasVnrArea","ExterQual","ExterCond","Foundation","BsmtQual","BsmtCond","BsmtExposure","BsmtFinType1","BsmtFinSF1","BsmtFinType2","BsmtFinSF2","BsmtUnfSF","TotalBsmtSF","Heating","HeatingQC","CentralAir","Electrical","OnestFlrSF","TwondFlrSF","LowQualFinSF","GrLivArea","BsmtFullBath","BsmtHalfBath","FullBath","HalfBath","Bedroom","Kitchen","KitchenQual","TotRmsAbvGrd","Functional","Fireplaces","FireplaceQu","GarageType","GarageYrBlt","GarageFinish","GarageCars","GarageArea","GarageQual","GarageCond","PavedDrive","WoodDeckSF","OpenPorchSF","EnclosedPorch","ThreeSsnPorch","ScreenPorch","PoolArea","PoolQC","Fence","MiscFeature","MiscVal","MoSold","YrSold","SaleType","SaleCondition","SalePrice")
+```
+
+Oncelikle verimizi ozetleyelim.
+
+```{r message=FALSE, warning=FALSE}
+summary(data)
+```
+
+Verimizde order degiskenimizi faktor haline getirmeliyiz.
+
+```{r message=FALSE, warning=FALSE}
+data$Order <- factor(data$Order)
+```
+
+Verimiz de saleprice si 230000 den buyuk olanlari 1 ve 230000 kucuk olanlari 0 a atayip yeni bir degisken olarak veriye ekleyelim(salepricecat).
+
+```{r message=FALSE, warning=FALSE}
+data <- data %>% mutate( SalePricecat=ifelse(data$SalePrice>230000, "1","0" ))
+
+data$SalePricecat <- factor(data$SalePricecat) 
+
+```
+
+Ilerde lojistik regresyonda kullanabilmek icin yanit degiskenimizin 0 ve 1 degerlerini factor olarak atadik.
+
+Verimizi test ve train olarak ikiye ayirdik.Modeller trainveri seti uzerinden kurulup test veri seti uzerinden denenecektir.
+
+```{r message=FALSE, warning=FALSE}
+set.seed(3014)
+train=sample(1:2930, size=1460, replace=F)
+traindata<-data[train,]
+testdata<-data[-train,]
+```
+
+```{r, warning=FALSE,message=FALSE}
+str(data)
+```
+
+Str kodu ile baktigimizda modelimizdeki degiskenlerimiz dogru tanimlanmistir.
+
+# Soru 1: Regresyon
+
+Amaç aşağıdaki test kümesini minimum **Kök logaritmik hata kareler ortalamasını** verecek şekilde tahmin etmektir. Derste öğrenilen modeller denenmelidir. Bunlar dışında istediğiniz modeli kullanabilirsiniz. 
+
+Oncelikle klasik lineer modelimizi olusturduk.
+
+```{r message=FALSE, warning=FALSE}
+lmod1<-lm(SalePrice ~ OverallQual+
+             LotFrontage+
+             LotArea+
+             OverallCond+
+             Kitchen+
+             TotRmsAbvGrd+
+             OnestFlrSF+
+             GrLivArea+ 
+             MoSold+
+             GarageCars,data=traindata)
+summary(lmod1)
+```
+
+Kurulan regresyon modelinde cogu degiskenler anlamsiz cikmistir.Bu model icin Residual standard error: 35250 
+
+```{r message=FALSE, warning=FALSE}
+sqrt(35250) #Residual standard error in karekoku RMSE verir
+```
+
+Kurulan modelde RMSE :187.7498 cikmistir.Residual standard error i yuksektir. Degisken ekleyip cikararak daha iyi bir model kuralim.
+
+```{r}
+lmod<-lm(SalePrice ~ OverallQual+
+             LotArea+
+            YearRemodAdd+
+             OnestFlrSF+
+             GrLivArea+
+            GarageCars,data=traindata)
+summary(lmod)
+```
+
+Logaritma almak birbirinden ayri degerleri birbirine yakinlastirmak icin yapilan bir islemdir.
+
+$$\sqrt{\frac{1}{n}\sum_{i=1}^n (log(\widehat{y_i} + 1)- log({y_i}+ 1))^2}$$
+
+```{r message=FALSE, warning=FALSE}
+set.seed(3014)
+rmlse <- function(model) { 
+  y <-abs( traindata$SalePrice)
+  y.pred <- abs(predict(model, traindata))
+  return(sqrt(1/length(y)*sum((log(y.pred +1)-log(traindata$SalePrice +1))^2)))
+}
+rmlse(lmod)
+```
+
+```{r message=FALSE, warning=FALSE}
+sqrt(34180) #Residual standard error in karekoku RMSE verir
+```
+
+Kurulan model ilk kurulan modele gore daha iyidir. Residual standard error u 34180 e dusmustur. Bu modeli kullanarak devam edecegiz. RMSE:184.8783 ve RMSLE:0.2524022 bulunmustur.
+
+# Karar Agaci
+
+Bagimsiz degiskenimiz salepricenin logaritmasini almak ev fiyatlarimizi birbirlerine yaklastirir.
+
+```{r message=FALSE, warning=FALSE}
+set.seed(3014)
+require(tree)
+treefit <- tree(SalePrice ~ GrLivArea + GarageArea, data = traindata)
+summary(treefit)
+```
+
+Number of terminal nodes agac yaprak sayisidir.Degerlere baktigimizda karar agacimiz 8 yaprakli olacaktir.
+Residual mean deviance yani Residual mean deviance degerimiz 2.131e+09 cikmistir.
+
+``````{r figs, echo=FALSE, fig.width=10,fig.height=5,fig.cap="\\label{fig:figs}Regresyon agaci"}
+set.seed(3014)
+plot(treefit )
+text(treefit, cex = 0.80) #dugum noktalari ayrimi yapan kod ,  cex=0.80 yazi boyutunu belirler.
+```
+
+Agacin uclari tahmin degerlerini verir. Karar agacinda da goruldugu uzere yukaridaki sonucumuz ile ayni cikmistir yani karar agacimiz 8 yapraklidir.
+
+```{r message=FALSE, warning=FALSE}
+set.seed(3014)
+price.deciles <- quantile(traindata$SalePrice, 0:10/10) #bagimsiz degiskenimizin quartile i alinir.
+
+cut.prices <- cut(traindata$SalePrice, price.deciles, include.lowest = TRUE) #ev fiyatlarinin quartile lerinin kesim notlari 
+
+plot(traindata$GrLivArea, traindata$GarageArea, col = grey(10:2/11)[cut.prices], pch = 20,
+xlab = "GrLivArea", ylab = "GarageArea")
+
+partition.tree(treefit, ordvars = c("GrLivArea", "GarageArea"), add = TRUE)
+```
+
+Koyu renkli notalar daha yuksekte olan ev fiyatlarini gostermektedir. Grafikte de goruldugu uzere  GrLivArea(Yukaridaki sinif (zemin) oturma alani metre kare) arttiginda GarageArea (Garajin metre kare cinsinden boyutu) de dogru orantili  artmaktadir buna bagli olarak ev fiyatida artmistir.
+
+Daha komplike bir agac icin  daha kucuk bir mindev durdurma kriteri verilir.
+
+```{r message=FALSE, warning=FALSE}
+set.seed(3014)
+treefit2 <- tree(log(SalePrice) ~ GrLivArea + GarageArea, data = traindata,
+mindev = 0.001)
+summary(treefit2)
+```
+
+Residual mean deviance degerimiz 0.04748 cikmistir
+mindev = 0.001 alindiginda yaprak sayimiz artmistir. Daha kompleks bir hale donusmustur.mindev: tuning parameters
+
+```{r message=FALSE, warning=FALSE}
+set.seed(3014)
+plot(traindata$GrLivArea, traindata$GarageArea, col = grey(10:2/11)[cut.prices], pch = 20,
+xlab = "GrLivArea", ylab = "GarageArea")
+
+partition.tree(treefit2, ordvars = c("GrLivArea", "GarageArea"), add = TRUE , cex = 0.8)
+```
+
+Grafikte de goruldugu uzere mindev=0.001 olacak sekilde alindiginda yaprak sayimiz arttigi icin over fit olmustur model kompleks hale donmustur.
+
+# CART model building 
+
+```{r message=FALSE, warning=FALSE}
+set.seed(3014)
+fit <- rpart(SalePrice~GrLivArea 
+             + GarageArea ,data=traindata)
+#summary(fit)
+
+#printcp(fit) # sonuçları göster
+plotcp(fit) # capraz dogrulama sonuclarini gorsellestirir
+#summary(fit) #bolunmelerin ayrintili ozeti
+```
+
+Burada en dusuk complex parametere degeri secilir yani cp=0.012 dir.
+
+# Agacin gorsellestirilmesi
+
+```{r message=FALSE, warning=FALSE}
+set.seed(3014)
+plot(fit, uniform=TRUE, 
+     main="Classification Tree for Price")
+text(fit, use.n=TRUE, all=TRUE, cex=0.7)
+
+fancyRpartPlot(fit,main="Classification Tree for Price",col="red")  #budanmamis karar agacinin suslu halidir
+
+#farkli  bir gorsellestirme 
+#party.fit <- as.party(fit)
+#plot(party.fit,main="Classification Tree for Price")
+#text(fit, use.n=TRUE, all=TRUE, cex=0.5) #dallardaki kutu grafikleri kucuk gozuktugu icin calistirilmadi
+```
+
+Yaprak uclarinda her birinde ki gozlem sayilarini gosterir.(n)Bu agac cok over fit etmis oluyor yorumlanmasi cok zordur ve test veri seti icin iyi bir model vermez.
+
+# Karar agacinin budanmasi
+
+```{r message=FALSE, warning=FALSE}
+set.seed(3014)
+pfit<- prune(fit, cp=fit$cptable[which.min(fit$cptable[,"xerror"]),"CP"])
+
+# Bu kod, belirtilen cp degerine gore kurulacaktir.
+pfit<- prune(fit, cp=0.05)
+
+summary(pfit)
+```
+
+Yukaridaki model sonucuna gore asagida cizdirecegimiz modellerin yaprak sayisina gore ortalama ve MSE degerlerini goruruz.(4 yaprakli icin mean=121933.7, MSE=9.761703e+08 )
+
+Verilen MSE degerimizden RMSE degerini hesaplayalim
+
+```{r message=FALSE, warning=FALSE}
+sqrt(9.761703e+08)
+```
+
+cp degeri kuculdukce daha kompleks agaclar verir. Bu sebeple cp degerini hesaplayarak 0.05 alarak kompleksligi azalttik bulduk.
+
+# Budanmis agacin cizilmesi
+
+```{r message=FALSE, warning=FALSE}
+set.seed(3014)
+plot(pfit, uniform=TRUE, 
+     main="Pruned Classification Tree for Price")
+text(pfit, use.n=TRUE, all=TRUE, cex=.8)
+
+fancyRpartPlot(pfit ,main="Pruned Classification Tree for Price",col="red")  #budanmis karar agacinin suslu seklidir
+
+party.pfit <- as.party(pfit)
+plot(party.pfit ,main="Pruned Classification Tree for Price") #budanmis agacimizin farkli bir gosterimi
+```
+
+Semada gorulen budanmis karar agacimiz 4 yapraklidir. 
+
+```{r message=FALSE, warning=FALSE}
+set.seed(3014)
+data("data")
+quantile(data$SalePrice, probs = seq(0, 1, by= 0.2)) 
+```
+
+```{r message=FALSE, warning=FALSE}
+set.seed(3014)
+table(traindata$SalePricecat)
+```
+
+Tabloda ev fiyati 230000 den buyuk olanlar 1 ile ev fiyati 230000 den kucuk olanlar 0 ile gosterilmektedir.
+
+#Bagging, Boosting, Random Forest
+
+Tree komutu ile verimizdeki bagimli degisken (SalePricecat) e karsi iki bagimsiz degisken (GrLivArea,GarageArea) kullanarak agac tahmin ettik.
+
+```{r message=FALSE, warning=FALSE}
+set.seed(3014)
+tree.data =tree(SalePricecat~ GrLivArea + GarageArea, data=traindata)
+summary (tree.data)
+```
+
+Olusturdugumuz agac 7 yapraklidir.Residual Mean Deviance degeri ne kadar kucukse agac o kadar iyi tahmin yapar.Residual mean deviance degerimiz 0.4603  cikmistir.
+
+```{r message=FALSE, warning=FALSE}
+set.seed(3014)
+plot(tree.data)
+text(tree.data ,pretty =0)
+```
+
+GrLivArea (Yukaridaki sinif (zemin) oturma alani metre kare ) degeri 1645'den buyukken ve GarageArea(Garajin metrekare cinsinden boyutu) degeri 679 dan buyukken  ev fiyati yuksektir.
+
+```{r message=FALSE, warning=FALSE}
+set.seed(3014)
+tree.data =tree(SalePricecat~ GrLivArea+GarageArea ,data=traindata )
+tree.pred=predict(tree.data,testdata,type ="class")
+table(tree.pred,testdata$SalePricecat)
+
+cat("\n","test seti icin agacin yanlis siniflandirma orani:", (135+50)/1470)
+cat("\n","test seti icin agacin dogru siniflandirma orani:", (1124+161)/1470)
+```
+
+### Cross Validation ile Agacin budanmasi
+
+```{r message=FALSE, warning=FALSE}
+set.seed (3014)
+cv.data =cv.tree(tree.data,FUN=prune.misclass) #cv.tree komutu ile agacin optimum 
+#karmasiklik duzeyi(yaprak sayisi) belirlenecektir. 
+#FUN=prune.misclass  komutu agacin karmasiklik duzeyinin  yanlis siniflandirma kriterine gore yapildigini soyler.
+names(cv.data)
+```
+
+```{r message=FALSE, warning=FALSE}
+cv.data
+```
+
+Yukarida cesitli agac boyutlarina gore deviationlar verilmistir. Metod olarak misclass i secerek minimum yaprak sayisini bulmak istiyoruz.
+
+```{r message=FALSE, warning=FALSE}
+set.seed(3014)
+par(mfrow =c(1,2))
+plot(cv.data$size ,cv.data$dev ,type="b")
+plot(cv.data$k ,cv.data$dev ,type="b")
+```
+
+Deviation a gore en kucuk cross validation degeri 4 tur.Ilk grafikte  4 den sonra fazla bir azalma olmamistir.
+
+```{r message=FALSE, warning=FALSE}
+set.seed(3014)
+prune.data =prune.misclass(tree.data ,best =4)
+plot(prune.data )
+text(prune.data ,pretty =0)
+```
+
+Deviation'a gore en kucuk cross validation ile cizdirdigimiz budanmis karar agaci.
+
+```{r message=FALSE, warning=FALSE}
+set.seed(3014)
+tree.pred=predict(prune.data,testdata,type="class")
+
+table(tree.pred,testdata$SalePricecat)
+#test seti icin agacin yanlis siniflandirma orani: 
+(135+50)/1470
+#test seti icin agacin dogru siniflandirma orani: 
+(1124+161)/1470
+```
+
+Her iki modelde de 185 kisinin yanlis atandigi gorulmektedir.En buyuk dusus 4 uncu basamakta yasanmistir.4 ten sonra fazla dusus yasanmadigi icin 4 sectik.
+
+```{r message=FALSE, warning=FALSE}
+set.seed(3014)
+plot(tree.data )
+text(tree.data ,pretty =0)
+```
+
+Karar agacimizda cizilen grafikteki en buyuk dusus 4 te gorulmustur, 4 ten sonraki degisken olan 7 de ufak ta olsa dusus gorulmustur.Cizdirdigimiz karar agaci 7 yapraklidir.
+
+```{r message=FALSE, warning=FALSE}
+set.seed(3014)
+#tree.data =tree(SalePricecat~ GrLivArea+GarageArea ,data=traindata )
+yhat=predict (tree.data,testdata)
+mean((yhat-testdata$SalePrice)^2)
+```
+
+# Bagging(Torbalama), Random Forest(Karar Ormanı), Boosting(Yükseltme)
+
+Yukaridaki kurdugumuz lmod regresyon modelimizdeki tum bagimsiz degiskenleri kullanarak Bagging yapalim.
+mtry : bagimsiz degisken sayisi.
+
+```{r message=FALSE, warning=FALSE}
+set.seed (3014)
+bag.data =randomForest(SalePrice~OverallQual+
+            YearRemodAdd+
+             LotArea+
+             OnestFlrSF+
+             GrLivArea+
+            GarageCars,data=traindata, mtry=6, importance=TRUE)
+bag.data
+```
+
+Mean of squared residuals = 929838027 cikmistir. % Var explained: 84.79 cikmistir.
+
+Bagging modeli agac sayisini 500 alir ama buyuk verilerde bir sure sonra agac sayisi degisiklik yaratmaz.
+
+```{r message=FALSE, warning=FALSE}
+set.seed(3014)
+yhat.bag = predict (bag.data , !is.na(testdata) )
+mean(( yhat.bag -testdata$SalePrice)^2)
+```
+
+```{r}
+sqrt(24871914575) #RMSE Degerimiz..
+```
+
+Bagging modelimizin hata kareler ortalamasi 24871914575 dir.RMSE 157708.3 cikmistir.
+
+```{r message=FALSE, warning=FALSE}
+set.seed(3014)
+y =abs( traindata$SalePrice)
+y.pred= predict (bag.data , !is.na(testdata) )
+
+rmlse=(sqrt(1/length(y)*sum((log(y.pred +1)-log(traindata$SalePrice +1))^2)))
+rmlse
+```
+
+Bagging modelimizin RMSLE si  1.346003 dir.
+
+Agac sayimizi(ntree) azaltarak Bagging modelimize bakalim.
+
+```{r message=FALSE, warning=FALSE}
+set.seed(3014)
+bag.data =randomForest(SalePrice~OverallQual+
+             LotArea+
+            YearRemodAdd+
+             OnestFlrSF+
+             GrLivArea+
+            GarageCars,data=traindata, mtry=6, ntree =20)
+yhat.bag = predict (bag.data , !is.na(testdata) )
+mean((yhat.bag -testdata$SalePrice)^2)
+```
+
+Agac sayisini azalttigimizda da ortalamamiz 23706994165 cikti.
+
+```{r message=FALSE, warning=FALSE}
+sqrt(23706994165) #RMSE Degerimiz...
+```
+
+```{r message=FALSE, warning=FALSE}
+set.seed(3014)
+y =abs( traindata$SalePrice)
+y.pred= predict (bag.data , !is.na(testdata) )
+
+rmlse=(sqrt(1/length(y)*sum((log(y.pred +1)-log(traindata$SalePrice +1))^2)))
+rmlse
+```
+
+RMSLE degerimiz 1.259837 cikmistir.
+
+# Random Forest 
+
+```{r message=FALSE, warning=FALSE}
+set.seed (3014)
+rf.data =randomForest(SalePrice~OverallQual+
+             LotArea+
+            YearRemodAdd+
+             OnestFlrSF+
+             GrLivArea+
+            GarageCars,data=traindata, mtry=500, importance =TRUE)
+yhat.rf = predict (rf.data ,!is.na(testdata))
+mean(( yhat.rf -testdata$SalePrice)^2)
+```
+
+Agac sayisini arttirdigimizda ortalamamiz 24662278271 cikti.
+
+```{r message=FALSE, warning=FALSE}
+sqrt(24662278271) #RMSE Degerimiz..
+```
+
+```{r message=FALSE, warning=FALSE}
+set.seed(3014)
+y =abs( traindata$SalePrice)
+y.pred=predict (rf.data ,!is.na(testdata))
+
+rmlse=(sqrt(1/length(y)*sum((log(y.pred +1)-log(traindata$SalePrice +1))^2)))
+rmlse
+```
+
+Random Forest yaptigimizda RMSLE degerimiz 1.330076 cikmistir.
+
+```{r message=FALSE, warning=FALSE}
+set.seed(3014)
+library(randomForest)
+importance (rf.data )
+varImpPlot (rf.data )
+```
+
+IncNodePurity grafigi bize safligi yani degiskenlerin onem sirasini gosterir. Ikı grafikte de goruldugu uzere bizim icin en anlamli iki degisken OverallQual ve GrLivArea dir.
+
+#Boosting 
+
+```{r message=FALSE, warning=FALSE}
+library(gbm)
+set.seed (3014)
+boost.data =gbm(SalePrice~OverallQual+
+             LotArea+
+            YearRemodAdd+
+             OnestFlrSF+
+             GrLivArea+
+            GarageCars,data=traindata, distribution="gaussian", n.trees =5000 , interaction.depth =5)
+summary(boost.data)
+```
+
+Karar agaclari icin Boosting kullanildiginda da  Summaryden de bakildigi uzere bu model icin en anlamli 2 degisken OverallQual ve GrLivArea dir.
+
+```{r message=FALSE, warning=FALSE}
+par(mfrow =c(1,2))
+plot(boost.data,i="OverallQual")
+plot(boost.data,i="GrLivArea")
+```
+
+Grafikte de goruldugu uzere OverallQual (Genel malzeme ve bitis kalitesi) arttikca ev fiyatimiz artmaktadir.
+Grafikte de goruldugu uzere GrLivArea(yukaridaki sinif (zemin) oturma alani metrekaresi) arttikca ev fiyatimiz artmaktadir.
+
+```{r message=FALSE, warning=FALSE}
+set.seed(3014)
+yhat.boost=predict (boost.data ,testdata,n.trees =5000)
+mean(( yhat.boost -testdata$SalePrice)^2)
+```
+
+Boosting yaptigimizda mean degerimiz 1188831166 cikmistir.
+
+```{r message=FALSE, warning=FALSE}
+sqrt(1188831166) #RMSE Degerimiz..
+```
+
+```{r message=FALSE, warning=FALSE}
+set.seed(3014)
+y =abs( traindata$SalePrice)
+y.pred=predict (boost.data ,testdata,n.trees =5000)
+
+rmlse=(sqrt(1/length(y)*sum((log(y.pred +1)-log(traindata$SalePrice +1))^2)))
+rmlse
+```
+
+Boosting yaptigimizda RMSLE degerimiz 0.5803201 cikmistir.
+Yukarida yapmis oldugumuz tum modellerimiz arasindan en kullanisli olani Boosting modelimizdir RMSLE si en dusuk Boosting cikmistir ve Mean degeri de digerlerine gore daha kucuk cikmistir.
+
+```{r message=FALSE, warning=FALSE}
+set.seed(3014)
+boost.data =gbm(SalePrice~OverallQual+
+             LotArea+
+            YearRemodAdd+
+             OnestFlrSF+
+             GrLivArea+
+            GarageCars,data=traindata, distribution=
+"gaussian",n.trees =5000 , interaction.depth =4, shrinkage =0.2, #Shrinkage ogrenme hizi demektir(Manuel olarak girdik).Bu deger girilmediginde lambda ogrenme parametresi otomatik olarak verilir yukaridaki modellerdeki gibi.
+verbose =F)
+yhat.boost=predict (boost.data ,testdata,
+n.trees =5000)
+mean((yhat.boost -testdata$SalePrice)^2)
+```
+
+Boosting yaptigimizda mean degerimiz 1257180156 cikmistir.
+
+```{r message=FALSE, warning=FALSE}
+sqrt(1257180156) #RMSE Degerimiz..
+```
+
+```{r message=FALSE, warning=FALSE}
+set.seed(3014)
+y =abs( traindata$SalePrice)
+y.pred=predict (boost.data ,testdata,
+n.trees =5000)
+
+rmlse=(sqrt(1/length(y)*sum((log(y.pred +1)-log(traindata$SalePrice +1))^2)))
+rmlse
+```
+
+Boosting yaptigimizda RMSLE degerimiz 0.5847732 cikmistir.
+
+# XGBOOST
+
+```{r message=FALSE, warning=FALSE}
+
+data1<-dplyr::select(data,OverallQual,LotArea,YearRemodAdd,OnestFlrSF,GrLivArea,GarageCars,SalePrice)
+data1
+```
+Xgboost icin kurdugumuz modeldeki degiskenlerimizi kullanarak yeni bir veri olusturduk.
+
+```{r message=FALSE, warning=FALSE}
+library(xgboost)
+
+SalePrice = data1$SalePrice
+label = as.integer(data1$SalePrice)-1
+data1$SalePrice= NULL
+```
+
+```{r message=FALSE, warning=FALSE}
+set.seed(3014)
+n = nrow(data1)
+train.index = sample(n,floor(0.498293515*n))
+train.data = as.matrix(data1[train.index,])
+train.label = label[train.index]
+test.data = as.matrix(data1[-train.index,])
+test.label = label[-train.index]
+```
+
+Yeni olusturdugumuz verimizi onceden belirledigimiz olceklerde test ve train olarak ayirdik.
+
+```{r message=FALSE, warning=FALSE}
+xgb.train = xgb.DMatrix(data=train.data,label=train.label)
+xgb.test = xgb.DMatrix(data=test.data,label=test.label)
+```
+
+Verimiz icin xgb.train ve xgb.test matrislerini olusturduk.
+Lineer modelimiz icin Xgboost olusturdugumuzdan reg:linear komutunu kullandik.
+ 
+```{r message=FALSE, warning=FALSE}
+xgboost(data = xgb.train,
+booster = "gbtree",
+objective = "reg:linear",
+max.depth = 5,
+eta = 0.5,
+nthread = 2,
+nround = 2,
+min_child_weight = 1,
+subsample = 0.5,
+colsample_bytree = 1,
+num_parallel_tree = 1)
+
+```
+
+1. ve 2. iterasyonumuz icin train_rmse degerlerine baktik, train_rmse degerimiz 2.iterasyonda daha kucuk cikmistir.
+
+# Soru 2
+## LOJISTIK REGRESYON MODELI
+
+# DENGESIZ SINIFLANDIRMA 
+
+Oncelikle descr ve freq kodumuz ile traindatamizin tanimlayici istatistiklerine baktik.
+
+```{r eval=FALSE, message=FALSE, warning=FALSE, include=FALSE}
+descr(traindata) #tanimlayici istatistikleri verir 
+freq(traindata) #degiskenlerin frekanslarini verir 
+```
+
+traindata$SalePricecat  Dusuk ev fiyatlari sayisi yuksek ev fiyatlari sayisindan cok farkli oldugundan dengesiz bir veri setidir(imbalanced data set). %valid oranlari siniflar arasi dengesizligi gosterir.
+Simdi lojistik regresyon modelimizi kuralim.
+
+Lojistik regresyonda bagimli degiskenimiz kategorik olarak kullanilir.(SalePricecat)
+
+```{r message=FALSE, warning=FALSE}
+set.seed(3014)
+model.lojistik=glm(SalePricecat~OverallQual+
+             LotArea+
+             YearRemodAdd+
+             OnestFlrSF+
+             GrLivArea+
+             GarageCars ,family="binomial",data=traindata) #family kodu ile bagimli degiskenin dagilimi verilir
+summary(model.lojistik)
+```
+
+Lojistik regresyonumuzu calistirdigimizda kullanilan bagimsiz degiskenlerimizin p valuelerinin 0.05 den kucuk oldugu gorulmekte yani bagimsiz degiskenlerimiz anlamlidir.Tahmin degerleri katsayilari pozitiftir. Ornegin OverallQual(Genel malzeme ve bitis kalitesi) arttikca ev fiyatida dogru orantili olarak artmaktadir.Lojistik modelimizi kurduktan sonra AIC degerimiz 456.88 cikmistir.Bu deger ne kadar kucukse o kadar iyidir.
+
+Lojistik regresyon modellemek icin odds oranlari kullanilir.confint katsayilarin güven araliklarini olusturur.
+
+```{r message=FALSE, warning=FALSE}
+#odds oranlari
+exp(cbind(OR = coef(model.lojistik), confint(model.lojistik)))
+```
+
+Olasilik degerlerini kesim noktalari icin kullanacagiz.
+
+```{r message=FALSE, warning=FALSE}
+olasilik=predict(model.lojistik,traindata,"response") #predict kotu model ciktisini verir
+head(olasilik,10)
+```
+
+Bu ciktilar bize her bir eve ait fiyatin yuksek olup olmama olasiliklarini verir.
+
+```{r message=FALSE, warning=FALSE}
+traindata$sinif.tahmin=ifelse(olasilik>0.5,"1","0")
+#Olasilik degerleri 0.5 den buyuk olan evlerin fiyatlari yuksek(yani1) , olasiligi 0.5 in altinda olan evlerin fiyatlarini dusuk(yani 0 ) olarak siniflandiriyoruz .
+
+traindata$sinif.tahmin=as.factor(traindata$sinif.tahmin)
+table.lojistik=table(Tahmin=traindata$sinif.tahmin, GercekDegerler=traindata$SalePricecat)
+table.lojistik
+```
+
+Burada ise ozelliklerimizin fazla oldugu durumda ev fiyatinin da arttigi orani gormekteyiz.
+Evin fiyati dusukken tahminde de dusuk cikma degeri (True Negatif) 1146 dir.
+Evin fiyati dusukken tahminde yuksek cikmasi (False pozitif) 31 ,
+Evin fiyati yuksekken tahminde dusuk cikmasi (False negatif) 50,
+Evin fiyati yuksekken tahminde yuksek cikmasi (True Pozitif ) 233 dir.
+
+```{r message=FALSE, warning=FALSE}
+accu.lojistik=(table.lojistik[1,1]+table.lojistik[2,2])/1460
+accu.lojistik
+```
+
+Dogru siniflandirma orani  0.9445205 dir.(ev fiyati gercekte pahaliyken tahminde de pahali cikmasi ve ev fiyati gercekte ucuzken tahminde de ucuz cikmasi).Modelin tum bulgularinin ozetlemek icin confusionMatrix fonksiyonu kullanalim 
+
+```{r message=FALSE, warning=FALSE}
+#library(e1071) paketi ile calisir.
+confusionMatrix(traindata$sinif.tahmin, traindata$SalePricecat,positive="1") 
+```
+  
+Confusion Matrix sonucuna gore dogru siniflandirma orani Accuracy : 0.9445 dir. %95 guven araligimiz 0.9315, 0.9557 araligindadir.Kappa : 0.8178 cikmistir.Modelin iyiligini gostermek icin olcutler asagidaki gibidir.
+
+Bu degerler ne kadar yuksekse model de o kadar iyi siniflandirma yapiyor demektir.Burada;
+
+Sensitivity : 0.8233 true pozitif/ (true pozitif+false negatif) 
+Specificity : 0.9737  true negatif/ (true negatif+false pozitif)        
+Pos Pred Value : 0.8826          
+Neg Pred Value : 0.9582          
+Prevalence : 0.1938 
+
+
+
+Simdi kurulan lojistik regresyon modelimizden en anlamsiz degiskenimiz olan GarageCars modelden cikarilarak yeni bir model kuralim.
+
+
+```{r message=FALSE, warning=FALSE}
+set.seed(3014)
+model.lojistik2=glm(SalePricecat~OverallQual+
+             LotArea+
+             YearRemodAdd+
+             OnestFlrSF+
+             GrLivArea
+             ,family="binomial",data=traindata) #family kodu ile bagimli degiskenin dagilimi verilir
+summary(model.lojistik2)
+
+```
+
+Lojistik regresyonumuzu calistirdigimizda kullanilan bagimsiz degiskenlerimizin p valuelerinin 0.05 den kucuk oldugu gorulmekte yani bagimsiz degiskenlerimiz anlamlidir.Tahmin degerleri katsayilari pozitiftir. Ornegin OverallQual(Genel malzeme ve bitis kalitesi) arttikca ev fiyatida dogru orantili olarak artmaktadir.Lojistik modelimizi kurduktan sonra AIC degerimiz 459.7 cikmistir.Bu deger ne kadar kucukse o kadar iyidir.
+
+Lojistik regresyon modellemek icin odds oranlari kullanilir.confint katsayilarin güven araliklarini olusturur.
+
+```{r message=FALSE, warning=FALSE}
+#odds oranlari
+exp(cbind(OR = coef(model.lojistik2), confint(model.lojistik2)))
+```
+
+olasilik degerlerini kesim noktalari icin kullanacagiz.
+
+```{r message=FALSE, warning=FALSE}
+olasilik2=predict(model.lojistik2,traindata,"response") #predict kotu model ciktisini verir
+head(olasilik2,10)
+```
+
+Bu ciktilar bize her bir eve ait fiyatin yuksek olup olmama olasiliklarini verir.
+
+```{r message=FALSE, warning=FALSE}
+traindata$sinif.tahmin=ifelse(olasilik2>0.5,"1","0")
+#Olasilik degerleri 0.5 den buyuk olan evlerin fiyatlari yuksek(yani1) , olasiligi 0.5 in altinda olan evlerin fiyatlarini dusuk(yani 0 ) olarak siniflandiriyoruz .
+
+traindata$sinif.tahmin=as.factor(traindata$sinif.tahmin)
+table.lojistik=table(Tahmin=traindata$sinif.tahmin, GercekDegerler=traindata$SalePricecat)
+table.lojistik
+```
+
+Burada ise ozelliklerimizin fazla oldugu durumda ev fiyatinin da arttigi orani gormekteyiz.
+
+Evin fiyati dusukken tahminde de dusuk cikma degeri (True Negatif) 1146 dir.
+Evin fiyati dusukken tahminde yuksek cikmasi (False pozitif) 31 ,
+Evin fiyati yuksekken tahminde dusuk cikmasi (False negatif) 53.
+Evin fiyati yuksekken tahminde yuksek cikmasi (True Pozitif ) 230 dir.
+
+Sensitivity : 0.8127  true pozitif/ (true pozitif+false negatif) 
+Specificity :  0.9737  true negatif/ (true negatif+false pozitif)
+
+```{r message=FALSE, warning=FALSE}
+accu.lojistik=(table.lojistik[1,1]+table.lojistik[2,2])/1460
+accu.lojistik
+```
+
+Dogru siniflandirma orani  0.9424658 dir.(ev fiyati gercekte pahaliyken tahminde de pahali cikmasi ve ev fiyati gercekte ucuzken tahminde de ucuz cikmasi)
+
+Modelin tum bulgularinin ozetlemek icin confusionMatrix fonksiyonu kullanalim 
+
+```{r message=FALSE, warning=FALSE}
+#library(e1071) paketi ile calisir.
+confusionMatrix(traindata$sinif.tahmin, traindata$SalePricecat,positive="1") 
+```
+
+Confusion Matrix sonucuna gore dogru siniflandirma orani Accuracy : 0.9425 dir. %95 guven araligimiz 0.9293, 0.9539 araligindadir.Kappa : 0.8103 cikmistir.Modelin iyiligini gostermek icin olcutler asagidaki gibidir.
+
+Bu degerler ne kadar yuksekse model de o kadar iyi siniflandirma yapiyor demektir.Burada;
+
+Sensitivity : 0.8127 true pozitif/ (true pozitif+false negatif) 
+Specificity : 0.9737  true negatif/ (true negatif+false pozitif)        
+Pos Pred Value :0.8812         
+Neg Pred Value : 0.9558          
+Prevalence : 0.1938 
+
+Simdi kurulan lojistik regresyon modelimizden bir bagimsiz degisken daha cikaralim. YearRemodAdd bagimsiz degiskeni modelden cikarilarak yeni bir model kuralim.
+
+```{r message=FALSE, warning=FALSE}
+set.seed(3014)
+model.lojistik3=glm(SalePricecat~OverallQual+
+             LotArea+
+             OnestFlrSF+
+             GrLivArea
+             ,family="binomial",data=traindata) #family kodu ile bagimli degiskenin dagilimi verilir
+summary(model.lojistik3)
+
+```
+
+Lojistik regresyonumuzu calistirdigimizda kullanilan bagimsiz degiskenlerimizin p valuelerinin 0.05 den kucuk oldugu gorulmekte yani bagimsiz degiskenlerimiz anlamlidir.Tahmin degerleri katsayilari pozitiftir. Ornegin OverallQual(Genel malzeme ve bitis kalitesi) arttikca ev fiyatida dogru orantili olarak artmaktadir.Lojistik modelimizi kurduktan sonra AIC degerimiz 480.41 cikmistir.Bu deger ne kadar kucukse o kadar iyidir.
+
+Lojistik regresyon modellemek icin odds oranlari kullanilir.
+confint katsayilarin güven araliklarini olusturur.
+
+```{r message=FALSE, warning=FALSE}
+#odds oranlari
+exp(cbind(OR = coef(model.lojistik3), confint(model.lojistik3)))
+```
+
+Olasilik degerlerini kesim noktalari icin kullanacagiz.
+
+```{r message=FALSE, warning=FALSE}
+olasilik3=predict(model.lojistik3,traindata,"response") #predict kotu model ciktisini verir
+head(olasilik3,10)
+```
+
+Bu ciktilar bize her bir eve ait fiyatin yuksek olup olmama olasiliklarini verir.
+
+```{r message=FALSE, warning=FALSE}
+traindata$sinif.tahmin=ifelse(olasilik3>0.5,"1","0")
+#Olasilik degerleri 0.5 den buyuk olan evlerin fiyatlari yuksek(yani1) , olasiligi 0.5 in altinda olan evlerin fiyatlarini dusuk(yani 0 ) olarak siniflandiriyoruz .
+
+traindata$sinif.tahmin=as.factor(traindata$sinif.tahmin)
+table.lojistik=table(Tahmin=traindata$sinif.tahmin, GercekDegerler=traindata$SalePricecat)
+table.lojistik
+```
+
+Burada ise ozelliklerimizin fazla oldugu durumda ev fiyatinin da arttigi orani gormekteyiz.
+
+Evin fiyati dusukken tahminde de dusuk cikma degeri (True Negatif) 1139 dir.
+Evin fiyati dusukken tahminde yuksek cikmasi (False pozitif) 38 ,
+Evin fiyati yuksekken tahminde dusuk cikmasi (False negatif) 53.
+Evin fiyati yuksekken tahminde yuksek cikmasi (True Pozitif ) 230 dir.
+
+Sensitivity :  0.8127  true pozitif/ (true pozitif+false negatif) 
+Specificity :   0.9677  true negatif/ (true negatif+false pozitif)
+
+```{r message=FALSE, warning=FALSE}
+accu.lojistik=(table.lojistik[1,1]+table.lojistik[2,2])/1460
+accu.lojistik
+```
+
+Dogru siniflandirma orani  0.9376712 dir.(ev fiyati gercekte pahaliyken tahminde de pahali cikmasi ve ev fiyati gercekte ucuzken tahminde de ucuz cikmasi)
+
+Modelin tum bulgularinin ozetlemek icin confusionMatrix fonksiyonu kullanalim 
+
+```{r message=FALSE, warning=FALSE}
+#library(e1071) paketi ile calisir.
+confusionMatrix(traindata$sinif.tahmin, traindata$SalePricecat,positive="1") 
+```
+
+Confusion Matrix sonucuna gore dogru siniflandirma orani Accuracy : 0.9377 dir. %95 guven araligimiz 0.924, 0.9495 araligindadir.Kappa : 0.7965 cikmistir.Modelin iyiligini gostermek icin olcutler asagidaki gibidir.
+Bu degerler ne kadar yuksekse model de o kadar iyi siniflandirma yapiyor demektir.Burada;
+Sensitivity : 0.8127 true pozitif/ (true pozitif+false negatif) 
+Specificity : 0.9677  true negatif/ (true negatif+false pozitif)        
+Pos Pred Value :0.8582        
+Neg Pred Value : 0.9555         
+Prevalence : 0.1938 
+
+Kurulan lojistik regresyon modelleri sonuclarina baktigimizda ;
+
+model.lojistik =  Accuracy : 0.9445 ,  Sensitivity : 0.8233 , Specificity : 0.9737 , AIC: 456.88,Kappa : 0.8178    
+ 
+model.lojistik2 =  Accuracy : 0.9425 ,   Sensitivity : 0.8127 , Specificity : 0.9737 , AIC: 459.7,Kappa : 0.8103
+
+model.lojistik3 =  Accuracy : 0.9377, Sensitivity : 0.8127 , Specificity : 0.9677  , AIC: 480.41 ,Kappa : 0.7965
+
+Modeli en iyi aciklayan ve sensitivity si en yuksek olan model.lojistiktir. Yani ilk kurulan modelden (OverallQual+ LotArea+ YearRemodAdd+ OnestFlrSF+ GrLivArea+ GarageCars) hic bir bagimsiz degiskenimizi cikarmadan devam edecegiz.
+
+### Modelin tahmin gucunun degerlendirilmesi
+
+Evin fiyatinin olasiligini tahmin edelim
+
+```{r message=FALSE, warning=FALSE}
+traindata$probabilities <- predict(model.lojistik, type = "response")
+head(traindata$probabilities,5)
+```
+
+Kesim noktasi(esik degeri) degerini yukaridaki model icin 0.5 almistik simdi 0.1 olacak sekilde degistiriyoruz.
+
+```{r message=FALSE, warning=FALSE}
+traindata$sinif.tahmin<- ifelse(traindata$probabilities > 0.1, "1", "0")
+traindata$sinif.tahmin=as.factor(traindata$sinif.tahmin) 
+```
+
+Tahmin ve gercek degerleri karsilastirmak icin asagidaki tabloya(hata matrisi) bakilabilir.
+
+```{r, warning=FALSE, message=FALSE}
+table(Tahmin=traindata$sinif.tahmin, Referans=traindata$SalePricecat)
+```
+
+Modelin tum bulgularinin ozetlemek icin confusionMatrix fonksiyonu kullanilabilir. 
+
+```{r, warning=FALSE, message=FALSE}
+library(e1071)
+confusionMatrix(traindata$sinif.tahmin, traindata$SalePricecat ,positive="1") 
+```
+
+Sonucumuza gore modelimizin Accuracy : 0.874  cikmistir ve Sensitivity : 0.9647 olmus ve artmistir.Asil istegimiz sensitivity nin artmasidir.Kappa : 0.6695 ,kesim noktasi 0.08 alinabilir
+
+```{r, warning=FALSE, message=FALSE}
+traindata$sinif.tahmin<- ifelse(traindata$probabilities > 0.08, "1", "0")
+traindata$sinif.tahmin=as.factor(traindata$sinif.tahmin) 
+confusionMatrix(traindata$sinif.tahmin, traindata$SalePricecat,positive="1")
+```
+
+Modelimizin kesim noktasini dusurdukce sensitivity artmaktadir. Bu sebeple kesim noktasi icin 0.08 kullanilacaktir.
+Accuracy : 0.8568 ,Kappa : 0.6354 , Sensitivity : 0.9682 , Specificity : 0.8301 
+
+Sensitivity en yuksek cikan model icin simdi karar agaclarina gecelim ;
+
+```{r}
+set.seed(3014)
+model.lojistik=glm(SalePricecat~OverallQual+
+             LotArea+
+             YearRemodAdd+
+             OnestFlrSF+
+             GrLivArea+
+             GarageCars ,family="binomial",data=traindata) #family kodu ile bagimli degiskenin dagilimi verilir
+summary(model.lojistik)
+```
+
+Lojistik regresyonumuzu calistirdigimizda kullanilan bagimsiz degiskenlerimizin p valuelerinin 0.05 den kucuk oldugu gorulmekte yani bagimsiz degiskenlerimiz anlamlidir.Tahmin degerleri katsayilari pozitiftir. Ornegin OverallQual(Genel malzeme ve bitis kalitesi) arttikca ev fiyatida dogru orantili olarak artmaktadir.Lojistik modelimizi kurduktan sonra AIC degerimiz 456.88 cikmistir.Bu deger ne kadar kucukse o kadar iyidir.
+
+Lojistik regresyon modellemek icin odds oranlari kullanilir.confint katsayilarin güven araliklarini olusturur.
+
+```{r message=FALSE, warning=FALSE}
+#odds oranlari
+exp(cbind(OR = coef(model.lojistik), confint(model.lojistik)))
+```
+
+olasilik degerlerini kesim noktalari icin kullanacagiz.
+
+```{r message=FALSE, warning=FALSE}
+olasilik=predict(model.lojistik,traindata,"response") #predict kotu model ciktisini verir
+head(olasilik,10)
+```
+
+Bu ciktilar bize her bir eve ait fiyatin yuksek olup olmama olasiliklarini verir.
+
+```{r message=FALSE, warning=FALSE}
+traindata$sinif.tahmin=ifelse(olasilik>0.5,"1","0")
+#Olasilik degerleri 0.5 den buyuk olan evlerin fiyatlari yuksek(yani1) , olasiligi 0.5 in altinda olan evlerin fiyatlarini dusuk(yani 0 ) olarak siniflandiriyoruz .
+
+traindata$sinif.tahmin=as.factor(traindata$sinif.tahmin)
+table.lojistik=table(Tahmin=traindata$sinif.tahmin, GercekDegerler=traindata$SalePricecat)
+table.lojistik
+```
+
+Burada ise ozelliklerimizin fazla oldugu durumda ev fiyatinin da arttigi orani gormekteyiz.
+Evin fiyati dusukken tahminde de dusuk cikma degeri (True Negatif) 1146 dir.
+Evin fiyati dusukken tahminde yuksek cikmasi (False pozitif) 31 ,
+Evin fiyati yuksekken tahminde dusuk cikmasi (False negatif) 50,
+Evin fiyati yuksekken tahminde yuksek cikmasi (True Pozitif ) 233 dir.
+
+# F1 Skoru
+$$F_1=\left(\frac{recall^{-1}+precision^{-1}}{2}\right)^{-1}=2 \times \frac{precision \times recall}{precision+recall}$$
+
+Precision = TP/TP+FP
+
+```{r message=FALSE, warning=FALSE}
+Precision=233/233+31
+Precision
+```
+Precision=32
+
+Recall = TP/TP+FN
+```{r message=FALSE, warning=FALSE}
+Recal=233/233+50
+Recal
+```
+Recal=51
+
+F1 Score = 2* (Recall * Precision) / (Recall + Precision)
+```{r message=FALSE, warning=FALSE}
+F1= 2*(51*32)/(51+32)
+F1
+```
+F1 Score=39.3253
+F1 puani - F1 Puani, Hassasiyet ve Geri cagirma'nin agirlikli ortalamasidir. Bu nedenle, bu puan hem yanlis pozitifleri hem de yanlis negatifleri dikkate alir.
+
+```{r message=FALSE, warning=FALSE}
+accu.lojistik=(table.lojistik[1,1]+table.lojistik[2,2])/1460
+accu.lojistik
+```
+
+Dogru siniflandirma orani  0.9445205 dir.(ev fiyati gercekte pahaliyken tahminde de pahali cikmasi ve ev fiyati gercekte ucuzken tahminde de ucuz cikmasi)
+
+Modelin tum bulgularinin ozetlemek icin confusionMatrix fonksiyonu kullanalim 
+
+```{r message=FALSE, warning=FALSE}
+#library(e1071) paketi ile calisir.
+confusionMatrix(traindata$sinif.tahmin, traindata$SalePricecat,positive="1") 
+```
+  
+Confusion Matrix sonucuna gore dogru siniflandirma orani Accuracy : 0.9445 dir. %95 guven araligimiz 0.9315, 0.9557 araligindadir.Kappa : 0.8178 cikmistir.
+   
+Modelin iyiligini gostermek icin olcutler asagidaki gibidir.
+
+Bu degerler ne kadar yuksekse model de o kadar iyi siniflandirma yapiyor demektir.Burada;
+
+Sensitivity : 0.8233 true pozitif/ (true pozitif+false negatif) 
+Specificity : 0.9737  true negatif/ (true negatif+false pozitif)        
+Pos Pred Value : 0.8826          
+Neg Pred Value : 0.9582          
+Prevalence : 0.1938 
+
+
+```{r message=FALSE, warning=FALSE}
+set.seed(3014)
+fit4=rpart(SalePricecat~OverallQual+
+             LotArea+
+             YearRemodAdd+
+             OnestFlrSF+
+             GrLivArea+
+             GarageCars, data = traindata) #gini index
+summary(fit4)
+```
+
+
+``````{r fig, echo=FALSE, fig.width=10,fig.height=5,fig.cap="\\label{fig:figs}Regresyon agaci"}
+plot(fit4 )
+text(fit4, cex = 0.80) #dugum noktalari ayrimi yapan kod ,  cex=0.80 yazi boyutunu belirler.
+```
+
+
+Karar agacimiz 7 yapraklidir.
+
+```{r message=FALSE, warning=FALSE}
+set.seed(3014)
+treefit4 <- tree(SalePricecat~OverallQual+
+             LotArea+
+             YearRemodAdd+
+             OnestFlrSF+
+             GrLivArea+
+             GarageCars, data = traindata,
+mindev = 0.001)
+summary(treefit4)
+```
+
+mindev = 0.001 alindiginda yaprak sayimiz artmistir. Daha kompleks bir hale donusmustur.Residual mean deviance: 0.1623 cikmistir.
+mindev: tuning parameters
+
+# CART model building 
+
+```{r message=FALSE, warning=FALSE}
+set.seed(3014)
+fit5 <- rpart(SalePricecat~OverallQual+
+             LotArea+
+             YearRemodAdd+
+             OnestFlrSF+
+             GrLivArea+
+             GarageCars,data=traindata)
+plotcp(fit5) # capraz dogrulama sonuclarini gorsellestirir
+```
+
+Burada en dusuk complex parametere degeri secilir. Burada 0.013 cikmistir.
+
+# Agacin gorsellestirilmesi
+
+```{r message=FALSE, warning=FALSE}
+plot(fit5, uniform=TRUE, 
+     main="Classification Tree for Price")
+text(fit5, use.n=TRUE, all=TRUE, cex=0.7)
+
+fancyRpartPlot(fit5,main="Classification Tree for Price",col="red")  #budanmamis karar agacinin suslu halidir
+```
+
+Yaprak uclarinda her birinde ki gozlem sayilarini gosterir.(n)Bu agac cok over fit etmis oluyor yorumlanmasi cok zordur ve test veri seti icin iyi bir model vermez.Budanmis agacimiza bakalim;
+
+# Karar agacinin budanmasi
+
+```{r message=FALSE, warning=FALSE}
+pfit<- prune(fit5, cp=fit5$cptable[which.min(fit5$cptable[,"xerror"]),"CP"])
+
+# Bu kod, belirtilen cp degerine gore kurulacaktir.
+pfit<- prune(fit5, cp=0.05)
+
+summary(pfit)
+```
+
+cp degeri kuculdukce daha kompleks agaclar verir. Bu sebeple cp degerini hesaplayarak 0.05 alarak kompleksligi azalttik bulduk.
+
+# Budanmis agacin cizilmesi
+
+```{r message=FALSE, warning=FALSE}
+plot(pfit, uniform=TRUE, 
+     main="Pruned Classification Tree for Price")
+text(pfit, use.n=TRUE, all=TRUE, cex=.8)
+
+fancyRpartPlot(pfit ,main="Pruned Classification Tree for Price",col="red")  #budanmis karar agacinin suslu seklidir
+```
+
+Semada gorulen budanmis karar agacimiz 3 yapraklidir. 
+
+
+
+
+
+
